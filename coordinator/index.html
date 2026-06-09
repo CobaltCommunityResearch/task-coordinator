@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Coordinator — Coordinator Dashboard</title>
+<style>
+  :root {
+    --cobalt: #1B5E8B;
+    --cobalt-dark: #144870;
+    --cobalt-light: #2E7FB8;
+    --cobalt-pale: #EBF4FB;
+    --teal: #2E9BC0;
+    --green: #27AE60;
+    --green-pale: #EAF7EE;
+    --orange: #E67E22;
+    --red: #E74C3C;
+    --red-pale: #FDEDEC;
+    --text: #2C3E50;
+    --text-muted: #7F8C8D;
+    --bg: #F0F4F8;
+    --card: #FFFFFF;
+    --border: #D5DDE5;
+    --shadow: 0 2px 8px rgba(27,94,139,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* Header */
+  header { background: var(--cobalt); color: white; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 60px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: 0.5px; }
+  .logo-icon { width: 32px; height: 32px; background: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { width: 20px; height: 20px; }
+  .header-badge { background: var(--teal); color: white; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .btn-settings { background: rgba(255,255,255,0.15); color: white; border: 1.5px solid rgba(255,255,255,0.3); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.15s; }
+  .btn-settings:hover { background: rgba(255,255,255,0.28); }
+  .settings-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .settings-modal.open { opacity: 1; pointer-events: all; }
+  .settings-card { background: white; border-radius: 14px; padding: 28px; width: 90%; max-width: 440px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+  .settings-title { font-size: 17px; font-weight: 700; color: var(--cobalt); margin-bottom: 8px; }
+  .settings-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+  .settings-label { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; display: block; }
+  .settings-input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 7px; font-size: 13px; font-family: monospace; color: var(--text); outline: none; transition: border-color 0.15s; }
+  .settings-input:focus { border-color: var(--cobalt); }
+  .settings-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .settings-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+
+  /* Sub-header */
+  .sub-header { background: var(--cobalt-dark); color: rgba(255,255,255,0.85); padding: 10px 24px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .sub-header a { color: rgba(255,255,255,0.7); text-decoration: none; }
+  .sub-header a:hover { color: white; }
+
+  /* Main */
+  main { max-width: 960px; margin: 0 auto; padding: 28px 20px; }
+  .page-title { font-size: 22px; font-weight: 700; color: var(--cobalt); margin-bottom: 4px; }
+  .page-subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
+
+  /* Action bar */
+  .action-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 28px; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.15s; }
+  .btn-primary { background: var(--cobalt); color: white; }
+  .btn-primary:hover { background: var(--cobalt-dark); }
+  .btn-secondary { background: white; color: var(--cobalt); border: 1.5px solid var(--cobalt); }
+  .btn-secondary:hover { background: var(--cobalt-pale); }
+  .btn-sm { padding: 6px 13px; font-size: 13px; border-radius: 6px; }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1.5px solid var(--border); }
+  .btn-ghost:hover { background: white; color: var(--text); }
+  .btn-copy { background: var(--cobalt-pale); color: var(--cobalt); border: 1.5px solid var(--cobalt-light); }
+  .btn-copy:hover { background: var(--cobalt); color: white; }
+  .btn-copy.copied { background: var(--green-pale); color: var(--green); border-color: var(--green); }
+  .btn-export { background: white; color: var(--text); border: 1.5px solid var(--border); }
+  .btn-export:hover { background: var(--bg); }
+
+  /* Stats strip */
+  .stats-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+  .stat-card { background: white; border-radius: 10px; padding: 18px 20px; box-shadow: var(--shadow); border-left: 4px solid var(--cobalt); }
+  .stat-num { font-size: 28px; font-weight: 700; color: var(--cobalt); line-height: 1; margin-bottom: 4px; }
+  .stat-label { font-size: 13px; color: var(--text-muted); }
+
+  /* Section header */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .section-title { font-size: 16px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .count-badge { background: var(--cobalt); color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+
+  /* Task cards */
+  .task-card { background: white; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden; border: 1.5px solid var(--border); transition: box-shadow 0.15s; }
+  .task-card:hover { box-shadow: 0 4px 16px rgba(27,94,139,0.15); }
+  .task-header { padding: 18px 20px 14px; display: flex; align-items: flex-start; gap: 14px; cursor: pointer; }
+  .task-icon { width: 40px; height: 40px; background: var(--cobalt-pale); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .task-info { flex: 1; min-width: 0; }
+  .task-name { font-size: 17px; font-weight: 700; color: var(--cobalt); margin-bottom: 3px; }
+  .task-meta { font-size: 13px; color: var(--text-muted); display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+  .task-meta span { display: flex; align-items: center; gap: 4px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .status-active { background: var(--green-pale); color: var(--green); }
+  .status-completed { background: #f0f0f0; color: #888; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .task-progress { display: flex; align-items: center; gap: 10px; }
+  .progress-bar { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; max-width: 180px; }
+  .progress-fill { height: 100%; background: var(--cobalt); border-radius: 3px; transition: width 0.4s; }
+  .progress-text { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .task-chevron { color: var(--text-muted); transition: transform 0.2s; flex-shrink: 0; margin-top: 4px; }
+  .task-chevron.open { transform: rotate(180deg); }
+
+  /* Task actions */
+  .task-actions { padding: 0 20px 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* Slots table */
+  .slots-section { border-top: 1.5px solid var(--border); display: none; }
+  .slots-section.open { display: block; }
+  .slots-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .slots-table thead tr { background: var(--cobalt-pale); }
+  .slots-table th { padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 700; color: var(--cobalt); text-transform: uppercase; letter-spacing: 0.5px; }
+  .slots-table td { padding: 11px 14px; border-top: 1px solid var(--border); vertical-align: middle; }
+  .slots-table tr:hover td { background: #fafbfc; }
+  .fill-indicator { display: flex; align-items: center; gap: 8px; }
+  .fill-bar { width: 60px; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .fill-bar-inner { height: 100%; border-radius: 3px; }
+  .fill-full { background: var(--orange); }
+  .fill-partial { background: var(--cobalt-light); }
+  .fill-empty { background: var(--border); }
+  .slot-status { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .slot-open { background: var(--green-pale); color: var(--green); }
+  .slot-full { background: #FFF3E0; color: var(--orange); }
+  .slot-completed { background: #f0f0f0; color: #888; }
+
+  /* Volunteer list in slot */
+  .volunteer-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .volunteer-chip { background: var(--cobalt-pale); color: var(--cobalt); font-size: 12px; padding: 2px 9px; border-radius: 10px; border: 1px solid var(--cobalt-light); }
+
+  /* Empty states */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 14px; }
+  .empty-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .empty-body { font-size: 14px; max-width: 360px; margin: 0 auto 20px; }
+
+  /* Loading */
+  .loading { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 60px 20px; color: var(--text-muted); font-size: 15px; }
+  .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--cobalt); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--text); color: white; padding: 10px 22px; border-radius: 24px; font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.25s; z-index: 9999; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Volunteer modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500; display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 14px; width: 100%; max-width: 680px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); overflow: hidden; }
+  .modal-header { background: var(--cobalt); color: white; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-size: 17px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 22px; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+  .modal-close:hover { color: white; background: rgba(255,255,255,0.15); }
+  .modal-body { padding: 24px; }
+  .modal-table { width: 100%; font-size: 14px; border-collapse: collapse; }
+  .modal-table th { text-align: left; padding: 8px 12px; background: var(--cobalt-pale); color: var(--cobalt); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .modal-table td { padding: 10px 12px; border-top: 1px solid var(--border); }
+  .modal-table tr:hover td { background: #fafbfc; }
+
+  /* Error */
+  .error-banner { background: var(--red-pale); border: 1px solid var(--red); border-radius: 8px; padding: 14px 18px; color: var(--red); font-size: 14px; margin-bottom: 20px; }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .stats-strip { grid-template-columns: 1fr; }
+    .task-meta { flex-direction: column; gap: 4px; }
+    .action-bar { flex-direction: column; align-items: stretch; }
+    .task-actions { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="10" cy="10" r="8" fill="#1B5E8B"/>
+        <path d="M6 10.5l2.5 2.5L14 7.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    COBALT TASK COORDINATOR
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span class="header-badge">Coordinator View</span>
+    <button class="btn-settings" onclick="openSettings()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </button>
+  </div>
+</header>
+<div class="sub-header">
+  <a href="#">Dashboard</a> › All Tasks
+</div>
+
+<main>
+  <div class="page-title">Coordinator Dashboard</div>
+  <div class="page-subtitle">View active tasks, monitor sign-ups, and share volunteer links.</div>
+
+  <div class="action-bar">
+    <a href="https://tally.so/r/NpP1OG" target="_blank" class="btn btn-primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Create New Task
+    </a>
+    <button class="btn btn-export" onclick="exportCSV()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export CSV
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="loadDashboard()" style="margin-left:auto;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+      Refresh
+    </button>
+  </div>
+
+  <div class="stats-strip" id="statsStrip">
+    <div class="stat-card"><div class="stat-num" id="statTasks">—</div><div class="stat-label">Active Tasks</div></div>
+    <div class="stat-card" style="border-color:var(--teal)"><div class="stat-num" id="statSlots" style="color:var(--teal)">—</div><div class="stat-label">Total Slots</div></div>
+    <div class="stat-card" style="border-color:var(--green)"><div class="stat-num" id="statSignups" style="color:var(--green)">—</div><div class="stat-label">Volunteers Signed Up</div></div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">
+      Tasks
+      <span class="count-badge" id="taskCount">0</span>
+    </div>
+  </div>
+
+  <div id="taskList"><div class="loading"><div class="spinner"></div>Loading tasks from Airtable…</div></div>
+</main>
+
+<!-- Volunteer modal -->
+<div class="modal-overlay" id="volunteerModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Volunteers</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="settings-modal" id="settingsModal">
+  <div class="settings-card">
+    <div class="settings-title">🔑 Airtable Connection</div>
+    <div class="settings-desc">Enter your Airtable Personal Access Token to connect the dashboard to your database. This is stored only in your browser and never transmitted to any server other than Airtable.</div>
+    <label class="settings-label">Personal Access Token</label>
+    <input id="settingsToken" class="settings-input" type="password" placeholder="patXXXXXXXXXXXXXXXX.xxxxxxx…" autocomplete="off" />
+    <div class="settings-hint">Found at <strong>airtable.com/create/tokens</strong> — requires data.records:read and data.records:write scopes on this base.</div>
+    <div class="settings-actions">
+      <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save &amp; Connect</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeSettings()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API     = 'https://api.airtable.com/v0/appYbHmtPyK774opi';
+let TOKEN = localStorage.getItem('tc_airtable_token') || '';
+const T_TASKS   = 'tbl6xSrJDzqkqfoWV';
+const T_SLOTS   = 'tbldHqearqUupOy89';
+const T_VOLS    = 'tbl0ipFgLigRxqgfV';
+const T_SIGNUPS = 'tblyEHfdaPLJXTYIh';
+const VOLUNTEER_BASE = 'https://cobaltcommunityresearch.github.io/task-coordinator/volunteer/';
+
+let allTasks = [], allSlots = [], allSignups = [], allVols = [];
+
+async function at(table, params = '') {
+  let records = [], offset = '';
+  do {
+    const sep = params ? '&' : '?';
+    const url = `${API}/${table}?${params}${offset ? sep + 'offset=' + offset : ''}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message || 'Airtable error');
+    records = records.concat(d.records || []);
+    offset = d.offset || '';
+  } while (offset);
+  return records;
+}
+
+async function loadDashboard() {
+  document.getElementById('taskList').innerHTML = '<div class="loading"><div class="spinner"></div>Loading tasks…</div>';
+  try {
+    [allTasks, allSlots, allSignups, allVols] = await Promise.all([
+      at(T_TASKS),
+      at(T_SLOTS),
+      at(T_SIGNUPS),
+      at(T_VOLS)
+    ]);
+    renderDashboard();
+  } catch(e) {
+    document.getElementById('taskList').innerHTML = `<div class="error-banner">⚠ Could not load data: ${e.message}</div>`;
+  }
+}
+
+function renderDashboard() {
+  const active = allTasks.filter(t => t.fields.Status !== 'Completed');
+  document.getElementById('statTasks').textContent  = active.length;
+  document.getElementById('statSlots').textContent  = allSlots.length;
+  document.getElementById('statSignups').textContent = allSignups.length;
+  document.getElementById('taskCount').textContent  = allTasks.length;
+
+  if (!allTasks.length) {
+    document.getElementById('taskList').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">No tasks yet</div>
+        <div class="empty-body">Create your first task and start coordinating volunteers.</div>
+        <a href="https://tally.so/r/NpP1OG" target="_blank" class="btn btn-primary">+ Create Task</a>
+      </div>`;
+    return;
+  }
+
+  const html = allTasks.map((task, i) => renderTaskCard(task, i)).join('');
+  document.getElementById('taskList').innerHTML = html;
+}
+
+function renderTaskCard(task, idx) {
+  const f = task.fields;
+  const taskSlots = allSlots.filter(s => (s.fields.Task || []).includes(task.id));
+  const totalNeeded = taskSlots.reduce((sum, s) => sum + (parseInt(s.fields['Volunteers Needed']) || 0), 0);
+  const taskSignups = allSignups.filter(su => taskSlots.some(s => (su.fields['Time Slot'] || []).includes(s.id)));
+  const filled = taskSignups.length;
+  const pct = totalNeeded > 0 ? Math.min(100, Math.round(filled / totalNeeded * 100)) : 0;
+  const isActive = f.Status !== 'Completed';
+  const volUrl = `${VOLUNTEER_BASE}?taskId=${task.id}&tok=${encodeURIComponent(TOKEN)}`;
+
+  return `
+  <div class="task-card" id="card-${idx}">
+    <div class="task-header" onclick="toggleCard(${idx})">
+      <div class="task-icon">🌿</div>
+      <div class="task-info">
+        <div class="task-name">${esc(f['Task Name'] || 'Untitled Task')}</div>
+        <div class="task-meta">
+          ${f.Location ? `<span>📍 ${esc(f.Location)}</span>` : ''}
+          <span>🗓 ${taskSlots.length} slot${taskSlots.length !== 1 ? 's' : ''}</span>
+          <span class="status-pill ${isActive ? 'status-active' : 'status-completed'}">
+            <span class="status-dot"></span>${isActive ? 'Active' : 'Completed'}
+          </span>
+        </div>
+        <div class="task-progress">
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+          <div class="progress-text">${filled} of ${totalNeeded} spots filled</div>
+        </div>
+      </div>
+      <svg class="task-chevron" id="chev-${idx}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6,9 12,15 18,9"/></svg>
+    </div>
+    <div class="task-actions">
+      <button class="btn btn-copy btn-sm" onclick="copyLink(this,'${volUrl}')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy Volunteer Link
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="showVolunteers(${idx})">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        View Sign-Ups (${filled})
+      </button>
+    </div>
+    <div class="slots-section" id="slots-${idx}">
+      ${renderSlotsTable(taskSlots)}
+    </div>
+  </div>`;
+}
+
+function renderSlotsTable(slots) {
+  if (!slots.length) return '<div style="padding:18px 20px;color:var(--text-muted);font-size:14px;">No time slots created for this task yet.</div>';
+  const rows = slots.map(slot => {
+    const f = slot.fields;
+    const signupsForSlot = allSignups.filter(su => (su.fields['Time Slot'] || []).includes(slot.id));
+    const need = parseInt(f['Volunteers Needed']) || 0;
+    const have = signupsForSlot.length;
+    const pct  = need > 0 ? Math.min(100, Math.round(have/need*100)) : 0;
+    const isFull = have >= need && need > 0;
+    const startStr = formatDT(f['Start Date/Time']);
+    const endStr   = formatDT(f['End Date/Time']);
+
+    const names = signupsForSlot.map(su => {
+      const volId = (su.fields.Volunteer || [])[0];
+      const vol = allVols.find(v => v.id === volId);
+      return vol ? `${vol.fields['First Name'] || ''} ${vol.fields['Last Name'] || ''}`.trim() : 'Unknown';
+    });
+
+    return `<tr>
+      <td><strong>${esc(f['Slot Label'] || '—')}</strong></td>
+      <td>${startStr}</td>
+      <td>${endStr}</td>
+      <td>
+        <div class="fill-indicator">
+          <div class="fill-bar"><div class="fill-bar-inner ${isFull ? 'fill-full' : have > 0 ? 'fill-partial' : 'fill-empty'}" style="width:${pct}%"></div></div>
+          <span>${have}/${need}</span>
+        </div>
+      </td>
+      <td>
+        ${names.length ? `<div class="volunteer-chips">${names.map(n=>`<span class="volunteer-chip">${esc(n)}</span>`).join('')}</div>` : '<span style="color:var(--text-muted);font-size:13px;">—</span>'}
+      </td>
+      <td><span class="slot-status ${isFull ? 'slot-full' : 'slot-open'}">${isFull ? 'Full' : 'Open'}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `<table class="slots-table">
+    <thead><tr>
+      <th>Slot</th><th>Start</th><th>End</th><th>Filled</th><th>Volunteers</th><th>Status</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function toggleCard(idx) {
+  const slots = document.getElementById(`slots-${idx}`);
+  const chev  = document.getElementById(`chev-${idx}`);
+  slots.classList.toggle('open');
+  chev.classList.toggle('open');
+}
+
+function showVolunteers(taskIdx) {
+  const task = allTasks[taskIdx];
+  const f = task.fields;
+  const taskSlots = allSlots.filter(s => (s.fields.Task || []).includes(task.id));
+  const rows = [];
+
+  for (const slot of taskSlots) {
+    const sups = allSignups.filter(su => (su.fields['Time Slot'] || []).includes(slot.id));
+    for (const su of sups) {
+      const volId = (su.fields.Volunteer || [])[0];
+      const vol = allVols.find(v => v.id === volId);
+      if (vol) {
+        rows.push(`<tr>
+          <td>${esc(slot.fields['Slot Label'] || '—')}</td>
+          <td>${formatDT(slot.fields['Start Date/Time'])}</td>
+          <td>${esc((vol.fields['First Name']||'') + ' ' + (vol.fields['Last Name']||''))}</td>
+          <td>${esc(vol.fields.Email || '—')}</td>
+          <td>${esc(vol.fields.Phone || '—')}</td>
+          <td>${esc(vol.fields['Preferred Contact'] || '—')}</td>
+          <td><span class="slot-status slot-open">${esc(su.fields.Status || 'Confirmed')}</span></td>
+        </tr>`);
+      }
+    }
+  }
+
+  document.getElementById('modalTitle').textContent = `Sign-Ups: ${f['Task Name'] || 'Task'}`;
+  document.getElementById('modalBody').innerHTML = rows.length
+    ? `<table class="modal-table"><thead><tr>
+        <th>Slot</th><th>Start</th><th>Name</th><th>Email</th><th>Phone</th><th>Contact Pref.</th><th>Status</th>
+       </tr></thead><tbody>${rows.join('')}</tbody></table>`
+    : `<div style="padding:20px;text-align:center;color:var(--text-muted);">No volunteers signed up yet. Share the volunteer link to get started.</div>`;
+  document.getElementById('volunteerModal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('volunteerModal').classList.remove('open'); }
+document.getElementById('volunteerModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+function copyLink(btn, url) {
+  navigator.clipboard.writeText(url).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg> Copied!`;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy Volunteer Link`;
+    }, 2500);
+    showToast('Volunteer link copied to clipboard!');
+  });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function exportCSV() {
+  const rows = [['Task','Location','Slot','Start','End','Volunteer Name','Email','Phone','Preferred Contact','Status','Signup Date']];
+  for (const task of allTasks) {
+    const taskSlots = allSlots.filter(s => (s.fields.Task || []).includes(task.id));
+    for (const slot of taskSlots) {
+      const sups = allSignups.filter(su => (su.fields['Time Slot'] || []).includes(slot.id));
+      if (!sups.length) {
+        rows.push([task.fields['Task Name']||'', task.fields.Location||'', slot.fields['Slot Label']||'',
+          slot.fields['Start Date/Time']||'', slot.fields['End Date/Time']||'', '', '', '', '', '', '']);
+      }
+      for (const su of sups) {
+        const vol = allVols.find(v => v.id === (su.fields.Volunteer||[])[0]) || {};
+        rows.push([
+          task.fields['Task Name']||'', task.fields.Location||'', slot.fields['Slot Label']||'',
+          slot.fields['Start Date/Time']||'', slot.fields['End Date/Time']||'',
+          ((vol.fields||{})['First Name']||'') + ' ' + ((vol.fields||{})['Last Name']||''),
+          (vol.fields||{}).Email||'', (vol.fields||{}).Phone||'',
+          (vol.fields||{})['Preferred Contact']||'', su.fields.Status||'', su.fields['Signup Date']||''
+        ]);
+      }
+    }
+  }
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `task-coordinator-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('CSV exported!');
+}
+
+function formatDT(str) {
+  if (!str) return '—';
+  const d = new Date(str);
+  if (isNaN(d)) return str;
+  return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })
+    + ' ' + d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openSettings() {
+  const stored = localStorage.getItem('tc_airtable_token') || '';
+  document.getElementById('settingsToken').value = stored;
+  document.getElementById('settingsModal').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('open');
+}
+
+function saveSettings() {
+  const t = document.getElementById('settingsToken').value.trim();
+  if (!t) { showToast('Please enter your Airtable Personal Access Token.'); return; }
+  TOKEN = t;
+  localStorage.setItem('tc_airtable_token', t);
+  closeSettings();
+  loadDashboard();
+}
+
+document.getElementById('settingsModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeSettings();
+});
+
+if (!TOKEN) {
+  openSettings();
+} else {
+  loadDashboard();
+}
+</script>
+</body>
+</html>
